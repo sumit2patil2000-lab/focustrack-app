@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 
 const App = () => {
+  // Helper to get current ISO date string (YYYY-MM-DD)
+  const getTodayDateString = () => new Date().toISOString().split('T')[0];
+
   // Navigation State
   const [activeTab, setActiveTab] = useState('schedule');
   const [showAddPage, setShowAddPage] = useState(false);
@@ -37,7 +40,7 @@ const App = () => {
   const [logs, setLogs] = useState([]);
   const [currentSession, setCurrentSession] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [scheduleDate, setScheduleDate] = useState(getTodayDateString());
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState(0);
 
   // Form State for New Activity
@@ -59,14 +62,31 @@ const App = () => {
     localStorage.setItem('tracker_activities_v5', JSON.stringify(activities));
   }, [activities]);
 
-  // Current Time Marker Logic
+  // Current Time Marker & Auto-Day-Switch Logic
   useEffect(() => {
-    const updateTime = () => {
+    const updateTimeAndDate = () => {
       const now = new Date();
+      const today = getTodayDateString();
+      
+      // Update the red line position
       setCurrentTimeMinutes(now.getHours() * 60 + now.getMinutes());
+
+      // AUTO DATE UPDATE: If the schedule was looking at "today", keep it updated to the new "today"
+      setScheduleDate(prevDate => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+        // If the view was stuck on yesterday, move it to today automatically
+        if (prevDate === yesterdayStr) {
+          return today;
+        }
+        return prevDate;
+      });
     };
-    updateTime();
-    const int = setInterval(updateTime, 60000);
+
+    updateTimeAndDate();
+    const int = setInterval(updateTimeAndDate, 60000); // Check every minute
     return () => clearInterval(int);
   }, []);
 
@@ -95,7 +115,7 @@ const App = () => {
       name: activity.name,
       icon: activity.icon,
       color: activity.color,
-      startTime: new Date().toISOString(),
+      startTime: new Date().toISOString(), // This uses the real-time clock for logs
     };
     setCurrentSession(newSession);
     setShowAddPage(false);
@@ -176,7 +196,6 @@ const App = () => {
           const largeArcFlag = percent > 0.5 ? 1 : 0;
           const pathData = `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
 
-          // Calculate center of arc for the icon
           const midAngle = (startAngle + endAngle) / 2;
           const iconR = radius;
           const ix = center + iconR * Math.cos((midAngle - 90) * (Math.PI / 180));
@@ -198,7 +217,7 @@ const App = () => {
     );
   };
 
-  const isToday = scheduleDate === new Date().toISOString().split('T')[0];
+  const isToday = scheduleDate === getTodayDateString();
   const adjustDate = (days) => {
     const d = new Date(scheduleDate);
     d.setDate(d.getDate() + days);
@@ -209,7 +228,7 @@ const App = () => {
     <div className="fixed inset-0 font-sans flex flex-col overflow-hidden" style={{ backgroundColor: '#0A0A0A', color: '#E5E5E5' }}>
       <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet" />
       
-      {/* Header - Styled like the reference image */}
+      {/* Header */}
       <header className="px-6 py-4 flex flex-col gap-4 shrink-0 z-40" style={{ backgroundColor: '#0A0A0A' }}>
         <div className="flex justify-between items-center">
             <h1 className="text-xl font-black text-white">
@@ -256,7 +275,6 @@ const App = () => {
       {/* Main Content Area */}
       <main className="flex-1 overflow-hidden relative">
         
-        {/* SCHEDULE VIEW */}
         {activeTab === 'schedule' && (
           <div className="h-full overflow-y-auto no-scrollbar relative w-full px-4">
             <div className="max-w-md mx-auto w-full relative" style={{ height: '1500px' }}>
@@ -306,47 +324,30 @@ const App = () => {
                     </div>
                   );
                 })}
-                {filteredLogs.length === 0 && (
-                  <div className="absolute top-20 left-0 right-0 text-center opacity-20">
-                     <p className="text-xs font-black uppercase tracking-widest">No logs for this day</p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* STATISTICS TAB - Styled as requested */}
         {activeTab === 'statistics' && (
           <div className="h-full overflow-y-auto p-4 no-scrollbar">
             <div className="max-w-md mx-auto space-y-6">
-                
-                {/* Main Stats Card with Donut Chart */}
                 <div className="bg-white/[0.03] border border-white/5 p-8 rounded-[2.5rem] relative overflow-hidden flex flex-col items-center">
                     <h3 className="text-sm font-black text-white uppercase tracking-wider mb-6">
                         {new Date(scheduleDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </h3>
-
                     <div className="relative w-full aspect-square flex items-center justify-center">
                         {renderPieChart()}
-                        {stats.grandTotal === 0 && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20">
-                                <ChartIcon size={40} />
-                                <p className="text-[10px] font-black uppercase mt-2">No Data</p>
-                            </div>
-                        )}
                         <div className="absolute flex flex-col items-center justify-center text-center">
                             <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Total</p>
                             <p className="text-2xl font-black text-white tabular-nums">{formatDuration(stats.grandTotal)}</p>
                         </div>
                     </div>
-
                     <button className="mt-8 bg-red-500 hover:bg-red-600 px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-red-500/20 active:scale-95 transition-all">
                         <Share2 size={16} /> Share
                     </button>
                 </div>
 
-                {/* List View */}
                 <div className="space-y-3 pb-8">
                     {stats.sorted.map((item, idx) => (
                         <div key={idx} className="flex justify-between items-center p-4 rounded-2xl bg-white/[0.02] border border-white/5">
@@ -364,7 +365,6 @@ const App = () => {
           </div>
         )}
 
-        {/* TAGS (INVENTORY) TAB */}
         {activeTab === 'tags' && (
           <div className="h-full overflow-y-auto p-6 no-scrollbar">
             <div className="max-w-md mx-auto">
@@ -411,7 +411,6 @@ const App = () => {
           </div>
         )}
 
-        {/* CURRENT SESSION TAB */}
         {activeTab === 'current' && (
           <div className="h-full flex flex-col items-center justify-center p-8">
             {currentSession ? (
