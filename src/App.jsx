@@ -14,6 +14,16 @@ import {
 } from 'lucide-react';
 
 const App = () => {
+  // Dynamically load Tailwind v3 for local environments where config might be missing
+  useEffect(() => {
+    if (!document.getElementById('tailwind-cdn')) {
+      const script = document.createElement('script');
+      script.id = 'tailwind-cdn';
+      script.src = 'https://cdn.tailwindcss.com';
+      document.head.appendChild(script);
+    }
+  }, []);
+
   // Navigation State
   const [activeTab, setActiveTab] = useState('schedule');
   const [showAddPage, setShowAddPage] = useState(false);
