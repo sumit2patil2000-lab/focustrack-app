@@ -162,6 +162,8 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-[#121212] text-[#E5E5E5] font-sans pb-32">
+      {/* Tailwind CDN injection for local preview compatibility */}
+      <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
       
       {/* Dynamic Header */}
       <header className="px-6 pt-10 pb-4 border-b border-white/5 bg-[#121212]/80 backdrop-blur-md sticky top-0 z-40">
@@ -242,7 +244,7 @@ const App = () => {
           </div>
         )}
 
-        {/* STATISTICS TAB (New Layout from Image) */}
+        {/* STATISTICS TAB */}
         {activeTab === 'statistics' && (
           <div className="animate-in fade-in duration-500 space-y-4 pb-10">
             {/* Filter Pills */}
@@ -275,7 +277,6 @@ const App = () => {
                       cumulativePercent += slice.percent;
                       const end = cumulativePercent;
                       
-                      // Convert percentage to angles
                       const startAngle = (start / 100) * 360;
                       const endAngle = (end / 100) * 360;
                       
@@ -294,17 +295,6 @@ const App = () => {
                     <circle cx="50" cy="50" r="40" fill="none" stroke="#f3f4f6" strokeWidth="15" />
                   )}
                 </svg>
-                
-                {/* Icons inside the donut (Approximate positions) */}
-                <div className="absolute inset-0 pointer-events-none">
-                   {statsSummary.slice(0, 4).map((s, i) => {
-                     // Very basic positioning for visualization
-                     const angle = (i * 90) * (Math.PI / 180);
-                     const x = 50 + 30 * Math.cos(angle);
-                     const y = 50 + 30 * Math.sin(angle);
-                     return <div key={i} className="absolute text-[10px]" style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}>{s.icon}</div>
-                   })}
-                </div>
 
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <div className="w-40 h-40 bg-white rounded-full flex flex-col items-center justify-center">
@@ -399,37 +389,27 @@ const App = () => {
       {/* Bottom Nav */}
       <footer className="fixed bottom-0 left-0 right-0 bg-[#121212]/95 backdrop-blur-xl border-t border-white/5 px-4 pt-3 pb-10 z-40">
         <div className="max-w-md mx-auto grid grid-cols-5 gap-1 relative items-center">
-          
           <button onClick={() => setActiveTab('schedule')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeTab === 'schedule' ? 'text-blue-500' : 'text-neutral-600'}`}>
             <CalendarIcon size={20} className="mb-1" strokeWidth={activeTab === 'schedule' ? 3 : 2} />
             <span className="text-[10px] font-black uppercase tracking-tighter">Schedule</span>
           </button>
-
           <button onClick={() => setActiveTab('tags')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeTab === 'tags' ? 'text-pink-500' : 'text-neutral-600'}`}>
             <Tag size={20} className="mb-1" strokeWidth={activeTab === 'tags' ? 3 : 2} />
             <span className="text-[10px] font-black uppercase tracking-tighter">Tags</span>
           </button>
-
-          {/* Center Start Button */}
           <div className="flex justify-center -mt-10">
-            <button 
-              onClick={() => setShowAddPage(true)} 
-              className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center text-white shadow-[0_10px_40px_rgba(239,68,68,0.4)] active:scale-90 transition-transform z-50 border-[6px] border-[#121212]"
-            >
+            <button onClick={() => setShowAddPage(true)} className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center text-white shadow-[0_10px_40px_rgba(239,68,68,0.4)] active:scale-90 transition-transform z-50 border-[6px] border-[#121212]">
               <Plus size={32} strokeWidth={4} />
             </button>
           </div>
-
           <button onClick={() => setActiveTab('current')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeTab === 'current' ? 'text-indigo-500' : 'text-neutral-600'}`}>
             <Clock size={20} className="mb-1" strokeWidth={activeTab === 'current' ? 3 : 2} />
             <span className="text-[10px] font-black uppercase tracking-tighter">Current</span>
           </button>
-
           <button onClick={() => setActiveTab('statistics')} className={`flex flex-col items-center p-2 rounded-xl transition-all ${activeTab === 'statistics' ? 'text-red-500' : 'text-neutral-600'}`}>
             <ChartIcon size={20} className="mb-1" strokeWidth={activeTab === 'statistics' ? 3 : 2} />
             <span className="text-[10px] font-black uppercase tracking-tighter">Stats</span>
           </button>
-          
         </div>
       </footer>
 
