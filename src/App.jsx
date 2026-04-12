@@ -18,8 +18,13 @@ import {
 } from 'lucide-react';
 
 const App = () => {
-  // Helper to get current ISO date string (YYYY-MM-DD)
-  const getTodayDateString = () => new Date().toISOString().split('T')[0];
+  // Helper to get local date string YYYY-MM-DD without UTC offset issues
+  const getLocalDateString = () => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const localDate = new Date(now.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().split('T')[0];
+  };
 
   // Navigation State
   const [activeTab, setActiveTab] = useState('schedule');
@@ -40,7 +45,9 @@ const App = () => {
   const [logs, setLogs] = useState([]);
   const [currentSession, setCurrentSession] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [scheduleDate, setScheduleDate] = useState(getTodayDateString());
+  
+  // Initialize with the actual machine date
+  const [scheduleDate, setScheduleDate] = useState(getLocalDateString());
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState(0);
 
   // Form State for New Activity
@@ -62,32 +69,34 @@ const App = () => {
     localStorage.setItem('tracker_activities_v5', JSON.stringify(activities));
   }, [activities]);
 
-  // Current Time Marker & Auto-Day-Switch Logic
+  // Heartbeat: Synchronize app state with actual machine clock every second
   useEffect(() => {
-    const updateTimeAndDate = () => {
+    const syncWithMachineTime = () => {
       const now = new Date();
-      const today = getTodayDateString();
+      const actualToday = getLocalDateString();
       
-      // Update the red line position
+      // Update red timeline marker
       setCurrentTimeMinutes(now.getHours() * 60 + now.getMinutes());
 
-      // AUTO DATE UPDATE: If the schedule was looking at "today", keep it updated to the new "today"
-      setScheduleDate(prevDate => {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-        
-        // If the view was stuck on yesterday, move it to today automatically
-        if (prevDate === yesterdayStr) {
-          return today;
+      // If the app is currently displaying what WAS today, but the machine date has changed,
+      // update the view automatically so the user is always on the current day.
+      setScheduleDate(currentViewDate => {
+        // Only auto-jump if the user was on the "old" today. 
+        // We don't want to jump if they are explicitly looking at a date in the far past.
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        const yesterday = d.toISOString().split('T')[0];
+
+        if (currentViewDate === yesterday) {
+          return actualToday;
         }
-        return prevDate;
+        return currentViewDate;
       });
     };
 
-    updateTimeAndDate();
-    const int = setInterval(updateTimeAndDate, 60000); // Check every minute
-    return () => clearInterval(int);
+    syncWithMachineTime();
+    const ticker = setInterval(syncWithMachineTime, 1000); 
+    return () => clearInterval(ticker);
   }, []);
 
   // Timer logic
@@ -109,14 +118,19 @@ const App = () => {
     if (currentSession) handleStopTracking();
 
     const activity = activities.find(a => a.id === activityId);
+    const now = new Date();
+    
     const newSession = {
       id: Date.now().toString(),
       activityId: activity.id,
       name: activity.name,
       icon: activity.icon,
       color: activity.color,
-      startTime: new Date().toISOString(), // This uses the real-time clock for logs
+      startTime: now.toISOString(), // Real machine time
     };
+
+    // If we start a session, ensure the view is on the day the session started
+    setScheduleDate(getLocalDateString());
     setCurrentSession(newSession);
     setShowAddPage(false);
     setActiveTab('current');
@@ -147,9 +161,20 @@ const App = () => {
   };
 
   const filteredLogs = useMemo(() => {
-    const dayLogs = logs.filter(log => log.startTime.startsWith(scheduleDate));
-    if (currentSession && currentSession.startTime.startsWith(scheduleDate)) {
-      dayLogs.push({ ...currentSession, endTime: new Date().toISOString(), duration: elapsedTime, isActive: true });
+    // Check if logs belong to the currently viewed scheduleDate
+    const dayLogs = logs.filter(log => {
+        const logDate = new Date(log.startTime);
+        const logDateStr = new Date(logDate.getTime() - (logDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        return logDateStr === scheduleDate;
+    });
+
+    // Inject active session if it matches the current view date
+    if (currentSession) {
+        const sessionDate = new Date(currentSession.startTime);
+        const sessionDateStr = new Date(sessionDate.getTime() - (sessionDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        if (sessionDateStr === scheduleDate) {
+            dayLogs.push({ ...currentSession, endTime: new Date().toISOString(), duration: elapsedTime, isActive: true });
+        }
     }
     return dayLogs;
   }, [logs, currentSession, elapsedTime, scheduleDate]);
@@ -171,7 +196,6 @@ const App = () => {
     return { sorted, grandTotal };
   }, [filteredLogs, activities, elapsedTime]);
 
-  // Pie Chart SVG Generator
   const renderPieChart = () => {
     if (stats.grandTotal === 0) return null;
     
@@ -217,7 +241,7 @@ const App = () => {
     );
   };
 
-  const isToday = scheduleDate === getTodayDateString();
+  const isToday = scheduleDate === getLocalDateString();
   const adjustDate = (days) => {
     const d = new Date(scheduleDate);
     d.setDate(d.getDate() + days);
@@ -228,7 +252,6 @@ const App = () => {
     <div className="fixed inset-0 font-sans flex flex-col overflow-hidden" style={{ backgroundColor: '#0A0A0A', color: '#E5E5E5' }}>
       <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet" />
       
-      {/* Header */}
       <header className="px-6 py-4 flex flex-col gap-4 shrink-0 z-40" style={{ backgroundColor: '#0A0A0A' }}>
         <div className="flex justify-between items-center">
             <h1 className="text-xl font-black text-white">
@@ -272,9 +295,7 @@ const App = () => {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="flex-1 overflow-hidden relative">
-        
         {activeTab === 'schedule' && (
           <div className="h-full overflow-y-auto no-scrollbar relative w-full px-4">
             <div className="max-w-md mx-auto w-full relative" style={{ height: '1500px' }}>
@@ -437,7 +458,6 @@ const App = () => {
         )}
       </main>
 
-      {/* Navigation Footer */}
       <footer className="shrink-0 border-t px-6 pt-3 pb-8 z-50" style={{ backgroundColor: '#0A0A0A', borderColor: 'rgba(255,255,255,0.05)' }}>
         <div className="max-w-md mx-auto flex justify-between items-center relative">
           <button onClick={() => setActiveTab('schedule')} className={`flex flex-col items-center gap-1.5 ${activeTab === 'schedule' ? 'text-white' : 'text-gray-600'}`}>
@@ -464,7 +484,6 @@ const App = () => {
         </div>
       </footer>
 
-      {/* Selection Modal */}
       {showAddPage && (
         <div className="fixed inset-0 flex flex-col animate-in" style={{ backgroundColor: '#0A0A0A', zIndex: 100 }}>
           <div className="px-8 pt-16 pb-8 flex justify-between items-start">
