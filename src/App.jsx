@@ -208,11 +208,11 @@ const App = () => {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-[#0A0A0A] text-[#E5E5E5] font-sans overflow-hidden">
+    <div className="fixed inset-0 flex flex-col font-sans overflow-hidden" style={{ backgroundColor: '#0A0A0A', color: '#E5E5E5' }}>
       <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet" />
       
       {/* Header */}
-      <header className="p-6 shrink-0 bg-[#0A0A0A] z-40 relative">
+      <header className="p-6 shrink-0 z-40 relative" style={{ backgroundColor: '#0A0A0A' }}>
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-black text-white uppercase tracking-tighter">
             {activeTab === 'schedule' ? 'Timeline' : activeTab === 'statistics' ? 'Analytics' : 'Settings'}
@@ -249,7 +249,7 @@ const App = () => {
             <div className="max-w-md mx-auto relative" style={{ height: '1440px' }}>
               {Array.from({ length: 24 }).map((_, i) => (
                 <div key={i} className="absolute left-0 right-0 border-t border-white/5 flex" style={{ top: `${i * 60}px`, height: '60px' }}>
-                  <span className="text-[10px] font-bold text-gray-700 -mt-2.5 bg-[#0A0A0A] pr-2">{i}:00</span>
+                  <span className="text-[10px] font-bold text-gray-700 -mt-2.5 pr-2" style={{ backgroundColor: '#0A0A0A' }}>{i}:00</span>
                 </div>
               ))}
               
@@ -353,7 +353,7 @@ const App = () => {
       </main>
 
       {/* Navigation Footer */}
-      <footer className="shrink-0 bg-[#0A0A0A] border-t border-white/5 px-6 pt-4 pb-10 relative z-40">
+      <footer className="shrink-0 border-t border-white/5 px-6 pt-4 pb-10 relative z-40" style={{ backgroundColor: '#0A0A0A' }}>
         <div className="max-w-md mx-auto flex justify-between items-center relative">
           <button onClick={() => setActiveTab('schedule')} className={`flex flex-col items-center gap-1 ${activeTab === 'schedule' ? 'text-blue-500' : 'text-gray-600'}`}>
             <CalendarIcon size={20} />
@@ -377,9 +377,9 @@ const App = () => {
         </div>
       </footer>
 
-      {/* MODALS: Fixed z-index and solid background to prevent merging */}
+      {/* MODALS: Fixed z-index and solid background explicitly applied to style to bypass Tailwind v2 arbitrary limits */}
       {showAddPage && (
-        <div className="fixed inset-0 bg-[#0A0A0A] p-8 flex flex-col animate-in" style={{ zIndex: 999 }}>
+        <div className="fixed inset-0 p-8 flex flex-col animate-in" style={{ zIndex: 999, backgroundColor: '#0A0A0A' }}>
           <div className="flex justify-between items-center mb-10">
             <h2 className="text-3xl font-black text-white uppercase tracking-tighter">New Entry</h2>
             <button onClick={() => setShowAddPage(false)} className="text-gray-500"><X size={32}/></button>
@@ -396,22 +396,25 @@ const App = () => {
       )}
 
       {showManualEntry && (
-        <div className="fixed inset-0 bg-[#0A0A0A] p-8 flex flex-col justify-center animate-in" style={{ zIndex: 999 }}>
+        <div className="fixed inset-0 p-8 flex flex-col justify-center animate-in" style={{ zIndex: 999, backgroundColor: '#0A0A0A' }}>
           <div className="max-w-md mx-auto w-full space-y-6">
             <h2 className="text-3xl font-black uppercase tracking-tighter">Manual Entry</h2>
-            <select className="w-full bg-[#111111] text-white p-4 rounded-2xl border border-white/10 outline-none" 
+            <select className="w-full text-white p-4 rounded-2xl border border-white/10 outline-none" 
+              style={{ backgroundColor: '#111111' }}
               onChange={(e) => setManualForm({...manualForm, activityId: e.target.value})}>
               <option value="">Choose Activity</option>
               {activities.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
             </select>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-gray-500 px-2">Start Time</label>
-              <input type="datetime-local" className="w-full bg-[#111111] text-white p-4 rounded-2xl border border-white/10 outline-none"
+              <input type="datetime-local" className="w-full text-white p-4 rounded-2xl border border-white/10 outline-none"
+                style={{ backgroundColor: '#111111' }}
                 onChange={(e) => setManualForm({...manualForm, start: e.target.value})} />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-gray-500 px-2">End Time</label>
-              <input type="datetime-local" className="w-full bg-[#111111] text-white p-4 rounded-2xl border border-white/10 outline-none"
+              <input type="datetime-local" className="w-full text-white p-4 rounded-2xl border border-white/10 outline-none"
+                style={{ backgroundColor: '#111111' }}
                 onChange={(e) => setManualForm({...manualForm, end: e.target.value})} />
             </div>
             <div className="flex gap-4 pt-4">
@@ -423,16 +426,18 @@ const App = () => {
       )}
 
       {showNewActivityForm && (
-        <div className="fixed inset-0 bg-[#0A0A0A] p-8 flex flex-col justify-center animate-in" style={{ zIndex: 999 }}>
+        <div className="fixed inset-0 p-8 flex flex-col justify-center animate-in" style={{ zIndex: 999, backgroundColor: '#0A0A0A' }}>
           <div className="max-w-md mx-auto w-full space-y-6">
             <h2 className="text-3xl font-black uppercase tracking-tighter">Create Tag</h2>
             <div className="flex gap-4">
-              <input placeholder="Emoji" className="w-20 bg-[#111111] text-white p-4 rounded-2xl border border-white/10 text-center text-2xl outline-none"
+              <input placeholder="Emoji" className="w-20 text-white p-4 rounded-2xl border border-white/10 text-center text-2xl outline-none"
+                style={{ backgroundColor: '#111111' }}
                 value={newActivity.icon} onChange={e => setNewActivity({...newActivity, icon: e.target.value})} />
-              <input placeholder="Activity Name" className="flex-1 bg-[#111111] text-white p-4 rounded-2xl border border-white/10 outline-none"
+              <input placeholder="Activity Name" className="flex-1 text-white p-4 rounded-2xl border border-white/10 outline-none"
+                style={{ backgroundColor: '#111111' }}
                 value={newActivity.name} onChange={e => setNewActivity({...newActivity, name: e.target.value})} />
             </div>
-            <div className="flex items-center gap-4 bg-[#111111] p-4 rounded-2xl border border-white/10">
+            <div className="flex items-center gap-4 p-4 rounded-2xl border border-white/10" style={{ backgroundColor: '#111111' }}>
               <span className="text-[10px] font-black uppercase text-gray-500">Color Profile</span>
               <input type="color" className="bg-transparent border-none w-12 h-8" 
                 value={newActivity.color} onChange={e => setNewActivity({...newActivity, color: e.target.value})} />
