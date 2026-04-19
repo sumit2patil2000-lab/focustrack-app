@@ -53,14 +53,18 @@ const App = () => {
   // Form State for New Activity
   const [newActivity, setNewActivity] = useState({ name: '', icon: '🎯', color: '#3b82f6' });
 
-  // Persistence logic
+  // 1. Loading Logic (including persistent current session)
   useEffect(() => {
     const savedLogs = localStorage.getItem('tracker_logs_v5');
     const savedActivities = localStorage.getItem('tracker_activities_v5');
+    const savedSession = localStorage.getItem('tracker_current_session_v5');
+    
     if (savedLogs) setLogs(JSON.parse(savedLogs));
     if (savedActivities) setActivities(JSON.parse(savedActivities));
+    if (savedSession) setCurrentSession(JSON.parse(savedSession));
   }, []);
 
+  // 2. Saving Logic
   useEffect(() => {
     localStorage.setItem('tracker_logs_v5', JSON.stringify(logs));
   }, [logs]);
@@ -68,6 +72,10 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem('tracker_activities_v5', JSON.stringify(activities));
   }, [activities]);
+
+  useEffect(() => {
+    localStorage.setItem('tracker_current_session_v5', JSON.stringify(currentSession));
+  }, [currentSession]);
 
   // Heartbeat: Synchronize app state with actual machine clock every second
   useEffect(() => {
@@ -78,40 +86,27 @@ const App = () => {
       // Update red timeline marker
       setCurrentTimeMinutes(now.getHours() * 60 + now.getMinutes());
 
-      // If the app is currently displaying what WAS today, but the machine date has changed,
-      // update the view automatically so the user is always on the current day.
+      // Auto-jump view to today if machine date rolled over
       setScheduleDate(currentViewDate => {
-        // Only auto-jump if the user was on the "old" today. 
-        // We don't want to jump if they are explicitly looking at a date in the far past.
         const d = new Date();
         d.setDate(d.getDate() - 1);
         const yesterday = d.toISOString().split('T')[0];
-
-        if (currentViewDate === yesterday) {
-          return actualToday;
-        }
+        if (currentViewDate === yesterday) return actualToday;
         return currentViewDate;
       });
+
+      // Update Timer: Calculate elapsed time based on absolute difference
+      // This ensures if the app is closed/backgrounded, it resumes with the correct time.
+      if (currentSession) {
+        const start = new Date(currentSession.startTime).getTime();
+        const diffInSeconds = Math.floor((now.getTime() - start) / 1000);
+        setElapsedTime(diffInSeconds > 0 ? diffInSeconds : 0);
+      }
     };
 
     syncWithMachineTime();
     const ticker = setInterval(syncWithMachineTime, 1000); 
     return () => clearInterval(ticker);
-  }, []);
-
-  // Timer logic
-  useEffect(() => {
-    let interval;
-    if (currentSession) {
-      interval = setInterval(() => {
-        const now = new Date().getTime();
-        const start = new Date(currentSession.startTime).getTime();
-        setElapsedTime(Math.floor((now - start) / 1000));
-      }, 1000);
-    } else {
-      setElapsedTime(0);
-    }
-    return () => clearInterval(interval);
   }, [currentSession]);
 
   const handleStartTracking = (activityId) => {
@@ -126,12 +121,12 @@ const App = () => {
       name: activity.name,
       icon: activity.icon,
       color: activity.color,
-      startTime: now.toISOString(), // Real machine time
+      startTime: now.toISOString(), 
     };
 
-    // If we start a session, ensure the view is on the day the session started
     setScheduleDate(getLocalDateString());
     setCurrentSession(newSession);
+    setElapsedTime(0); // Reset UI counter
     setShowAddPage(false);
     setActiveTab('current');
   };
@@ -139,13 +134,18 @@ const App = () => {
   const handleStopTracking = () => {
     if (!currentSession) return;
     const now = new Date();
+    const start = new Date(currentSession.startTime).getTime();
+    const finalDuration = Math.floor((now.getTime() - start) / 1000);
+
     const completedSession = {
       ...currentSession,
       endTime: now.toISOString(),
-      duration: elapsedTime
+      duration: finalDuration
     };
+    
     setLogs(prev => [...prev, completedSession]);
     setCurrentSession(null);
+    setElapsedTime(0);
   };
 
   const formatDuration = (seconds) => {
@@ -161,14 +161,12 @@ const App = () => {
   };
 
   const filteredLogs = useMemo(() => {
-    // Check if logs belong to the currently viewed scheduleDate
     const dayLogs = logs.filter(log => {
         const logDate = new Date(log.startTime);
         const logDateStr = new Date(logDate.getTime() - (logDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         return logDateStr === scheduleDate;
     });
 
-    // Inject active session if it matches the current view date
     if (currentSession) {
         const sessionDate = new Date(currentSession.startTime);
         const sessionDateStr = new Date(sessionDate.getTime() - (sessionDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
@@ -198,7 +196,6 @@ const App = () => {
 
   const renderPieChart = () => {
     if (stats.grandTotal === 0) return null;
-    
     let cumulativePercent = 0;
     const radius = 80;
     const center = 100;
@@ -264,19 +261,6 @@ const App = () => {
             </div>
         </div>
 
-        {activeTab === 'statistics' && (
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                {['Day', 'Week', 'Month', 'Year', 'Custom'].map(t => (
-                    <button 
-                        key={t}
-                        className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${t === 'Day' ? 'bg-red-500 border-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-white/5 border-white/5 text-gray-400'}`}
-                    >
-                        {t}
-                    </button>
-                ))}
-            </div>
-        )}
-
         <div className="flex items-center justify-between bg-white/5 rounded-2xl p-1 px-4">
             <button onClick={() => adjustDate(-1)} className="p-2 text-gray-400"><ChevronLeft size={20}/></button>
             <div className="relative group flex items-center gap-2">
@@ -321,7 +305,7 @@ const App = () => {
               <div className="absolute top-0 bottom-0 right-0" style={{ left: '3.5rem' }}>
                 {filteredLogs.map((log, idx) => {
                   const startMinutes = getMinutesSinceMidnight(log.startTime);
-                  const durationMinutes = log.isActive ? (elapsedTime / 60) : (log.duration / 60);
+                  const durationMinutes = (log.isActive ? elapsedTime : log.duration) / 60;
                   const height = Math.max(durationMinutes, 30);
                   return (
                     <div key={idx} className="absolute left-0 right-0 rounded-2xl p-3 border shadow-xl flex items-center overflow-hidden transition-all"
