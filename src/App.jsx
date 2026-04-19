@@ -25,22 +25,41 @@ const App = () => {
     return localDate.toISOString().split('T')[0];
   };
 
-  // --- STATE ---
+  // --- STATE WITH AUTOMATIC DATA MIGRATION ---
+  const [logs, setLogs] = useState(() => {
+    const saved = localStorage.getItem('tracker_data_logs') || 
+                  localStorage.getItem('tracker_logs_v6') || 
+                  localStorage.getItem('tracker_logs_v5');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [activities, setActivities] = useState(() => {
+    const defaultActs = [
+      { id: '1', name: 'Sleep', icon: '☁️', color: '#3b82f6' },
+      { id: '2', name: 'Work', icon: '💼', color: '#a855f7' },
+      { id: '3', name: 'Training', icon: '🏃', color: '#10b981' },
+      { id: '4', name: 'Eating', icon: '🍴', color: '#f97316' },
+      { id: '5', name: 'Reading', icon: '📚', color: '#6366f1' }
+    ];
+    const saved = localStorage.getItem('tracker_data_acts') || 
+                  localStorage.getItem('tracker_acts_v6') || 
+                  localStorage.getItem('tracker_activities_v5');
+    return saved ? JSON.parse(saved) : defaultActs;
+  });
+
+  const [currentSession, setCurrentSession] = useState(() => {
+    const saved = localStorage.getItem('tracker_data_session') || 
+                  localStorage.getItem('tracker_session_v6') || 
+                  localStorage.getItem('tracker_current_session_v5');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  // UI State
   const [activeTab, setActiveTab] = useState('schedule');
   const [showAddPage, setShowAddPage] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [showNewActivityForm, setShowNewActivityForm] = useState(false);
-
-  const [activities, setActivities] = useState([
-    { id: '1', name: 'Sleep', icon: '☁️', color: '#3b82f6' },
-    { id: '2', name: 'Work', icon: '💼', color: '#a855f7' },
-    { id: '3', name: 'Training', icon: '🏃', color: '#10b981' },
-    { id: '4', name: 'Eating', icon: '🍴', color: '#f97316' },
-    { id: '5', name: 'Reading', icon: '📚', color: '#6366f1' }
-  ]);
   
-  const [logs, setLogs] = useState([]);
-  const [currentSession, setCurrentSession] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [scheduleDate, setScheduleDate] = useState(getLocalDateString());
   const [currentTimeMinutes, setCurrentTimeMinutes] = useState(0);
@@ -50,19 +69,11 @@ const App = () => {
   const [newActivity, setNewActivity] = useState({ name: '', icon: '🎯', color: '#3b82f6' });
 
   // --- PERSISTENCE ---
+  // Now we strictly save to the permanent "tracker_data_" keys to never lose data again
   useEffect(() => {
-    const savedLogs = localStorage.getItem('tracker_logs_v6');
-    const savedActs = localStorage.getItem('tracker_acts_v6');
-    const savedSession = localStorage.getItem('tracker_session_v6');
-    if (savedLogs) setLogs(JSON.parse(savedLogs));
-    if (savedActs) setActivities(JSON.parse(savedActs));
-    if (savedSession) setCurrentSession(JSON.parse(savedSession));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('tracker_logs_v6', JSON.stringify(logs));
-    localStorage.setItem('tracker_acts_v6', JSON.stringify(activities));
-    localStorage.setItem('tracker_session_v6', JSON.stringify(currentSession));
+    localStorage.setItem('tracker_data_logs', JSON.stringify(logs));
+    localStorage.setItem('tracker_data_acts', JSON.stringify(activities));
+    localStorage.setItem('tracker_data_session', JSON.stringify(currentSession));
   }, [logs, activities, currentSession]);
 
   // --- TIMER & CLOCK SYNC ---
@@ -201,7 +212,7 @@ const App = () => {
       <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet" />
       
       {/* Header */}
-      <header className="p-6 shrink-0 bg-[#0A0A0A] z-40">
+      <header className="p-6 shrink-0 bg-[#0A0A0A] z-40 relative">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-black text-white uppercase tracking-tighter">
             {activeTab === 'schedule' ? 'Timeline' : activeTab === 'statistics' ? 'Analytics' : 'Settings'}
@@ -342,7 +353,7 @@ const App = () => {
       </main>
 
       {/* Navigation Footer */}
-      <footer className="shrink-0 bg-[#0A0A0A] border-t border-white/5 px-6 pt-4 pb-10">
+      <footer className="shrink-0 bg-[#0A0A0A] border-t border-white/5 px-6 pt-4 pb-10 relative z-40">
         <div className="max-w-md mx-auto flex justify-between items-center relative">
           <button onClick={() => setActiveTab('schedule')} className={`flex flex-col items-center gap-1 ${activeTab === 'schedule' ? 'text-blue-500' : 'text-gray-600'}`}>
             <CalendarIcon size={20} />
@@ -366,9 +377,9 @@ const App = () => {
         </div>
       </footer>
 
-      {/* MODALS */}
+      {/* MODALS: Fixed z-index and solid background to prevent merging */}
       {showAddPage && (
-        <div className="fixed inset-0 z-50 bg-[#0A0A0A] p-8 flex flex-col animate-in">
+        <div className="fixed inset-0 bg-[#0A0A0A] p-8 flex flex-col animate-in" style={{ zIndex: 999 }}>
           <div className="flex justify-between items-center mb-10">
             <h2 className="text-3xl font-black text-white uppercase tracking-tighter">New Entry</h2>
             <button onClick={() => setShowAddPage(false)} className="text-gray-500"><X size={32}/></button>
@@ -385,22 +396,22 @@ const App = () => {
       )}
 
       {showManualEntry && (
-        <div className="fixed inset-0 z-50 bg-black/95 p-8 flex flex-col justify-center animate-in">
+        <div className="fixed inset-0 bg-[#0A0A0A] p-8 flex flex-col justify-center animate-in" style={{ zIndex: 999 }}>
           <div className="max-w-md mx-auto w-full space-y-6">
             <h2 className="text-3xl font-black uppercase tracking-tighter">Manual Entry</h2>
-            <select className="w-full bg-white/5 p-4 rounded-2xl border border-white/10 outline-none" 
+            <select className="w-full bg-[#111111] text-white p-4 rounded-2xl border border-white/10 outline-none" 
               onChange={(e) => setManualForm({...manualForm, activityId: e.target.value})}>
               <option value="">Choose Activity</option>
               {activities.map(a => <option key={a.id} value={a.id}>{a.icon} {a.name}</option>)}
             </select>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-gray-500 px-2">Start Time</label>
-              <input type="datetime-local" className="w-full bg-white/5 p-4 rounded-2xl border border-white/10"
+              <input type="datetime-local" className="w-full bg-[#111111] text-white p-4 rounded-2xl border border-white/10 outline-none"
                 onChange={(e) => setManualForm({...manualForm, start: e.target.value})} />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-gray-500 px-2">End Time</label>
-              <input type="datetime-local" className="w-full bg-white/5 p-4 rounded-2xl border border-white/10"
+              <input type="datetime-local" className="w-full bg-[#111111] text-white p-4 rounded-2xl border border-white/10 outline-none"
                 onChange={(e) => setManualForm({...manualForm, end: e.target.value})} />
             </div>
             <div className="flex gap-4 pt-4">
@@ -412,21 +423,21 @@ const App = () => {
       )}
 
       {showNewActivityForm && (
-        <div className="fixed inset-0 z-50 bg-black/95 p-8 flex flex-col justify-center animate-in">
+        <div className="fixed inset-0 bg-[#0A0A0A] p-8 flex flex-col justify-center animate-in" style={{ zIndex: 999 }}>
           <div className="max-w-md mx-auto w-full space-y-6">
             <h2 className="text-3xl font-black uppercase tracking-tighter">Create Tag</h2>
             <div className="flex gap-4">
-              <input placeholder="Emoji" className="w-20 bg-white/5 p-4 rounded-2xl border border-white/10 text-center text-2xl"
+              <input placeholder="Emoji" className="w-20 bg-[#111111] text-white p-4 rounded-2xl border border-white/10 text-center text-2xl outline-none"
                 value={newActivity.icon} onChange={e => setNewActivity({...newActivity, icon: e.target.value})} />
-              <input placeholder="Activity Name" className="flex-1 bg-white/5 p-4 rounded-2xl border border-white/10 outline-none"
+              <input placeholder="Activity Name" className="flex-1 bg-[#111111] text-white p-4 rounded-2xl border border-white/10 outline-none"
                 value={newActivity.name} onChange={e => setNewActivity({...newActivity, name: e.target.value})} />
             </div>
-            <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
+            <div className="flex items-center gap-4 bg-[#111111] p-4 rounded-2xl border border-white/10">
               <span className="text-[10px] font-black uppercase text-gray-500">Color Profile</span>
               <input type="color" className="bg-transparent border-none w-12 h-8" 
                 value={newActivity.color} onChange={e => setNewActivity({...newActivity, color: e.target.value})} />
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-4 pt-4">
               <button onClick={() => setShowNewActivityForm(false)} className="flex-1 py-4 font-black uppercase text-xs text-gray-500">Cancel</button>
               <button onClick={() => {
                 setActivities([...activities, { ...newActivity, id: Date.now().toString() }]);
@@ -442,7 +453,7 @@ const App = () => {
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-in { animation: fadeIn 0.25s ease-out forwards; }
+        .animate-in { animation: fadeIn 0.2s ease-out forwards; }
         input[type="datetime-local"] { color-scheme: dark; }
       `}} />
     </div>
